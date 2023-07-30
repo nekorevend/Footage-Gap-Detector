@@ -19,7 +19,7 @@ def get_full_file_list(directory: str) -> PriorityQueue:
   pq = PriorityQueue()
   for root, _, files in os.walk(directory):
     for file in files:
-      pq.put(root + os.sep + file)
+      pq.put(os.path.join(root, file))
   return pq
 
 def get_video_duration_time(path: str) -> Tuple[datetime, int]:
@@ -57,12 +57,12 @@ def get_gapped_files(directory: str, threshold_lower: int, threshold_upper: int)
     try:
       prev_dt, prev_dur_ms = get_video_duration_time(prev)
       break
-    except MetadataException:
+    except MetadataException as e:
       # Might not be a video file, which is fine. Skip it.
-      pass
+      print(e, 'Skipping.')
 
   if prev_dt is None:
-    print(f'There were no valid video files in {directory}!')
+    print(f'There were no valid video files in "{directory}"!')
     return []
 
   max_length = 0
@@ -74,17 +74,16 @@ def get_gapped_files(directory: str, threshold_lower: int, threshold_upper: int)
 
     try:
       cur_dt, cur_dur_ms = get_video_duration_time(cur)
-      expected_cur_time = prev_dt + timedelta(milliseconds=prev_dur_ms)
-      diff = cur_dt - expected_cur_time
-      diff = diff / timedelta(milliseconds=1)
+      expected_dt = prev_dt + timedelta(milliseconds=prev_dur_ms)
+      diff = (cur_dt - expected_dt) / timedelta(milliseconds=1)
       if diff > threshold_lower and diff < threshold_upper:
         flagged_pairs.append((prev, cur, int(diff)))
       prev = cur
       prev_dt = cur_dt
       prev_dur_ms = cur_dur_ms
-    except MetadataException:
+    except MetadataException as e:
       # Might not be a video file, which is fine. Skip it.
-      pass
+      print(e, 'Skipping.')
   return flagged_pairs
 
 if __name__ == '__main__':
